@@ -18,7 +18,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <main className="flex min-h-screen flex-col items-center justify-between p-8 md:p-24">
-          <div className="z-10 md:max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
+          <div className="z-10 md:max-w-5xl w-full items-center font-mono text-sm flex justify-center">
             <div className="flex flex-col items-center justify-center">
               <h1 className="text-4xl font-bold text-center">
                 Welcome to <span className="text-blue-500">M</span>
@@ -33,7 +33,7 @@ export default function RootLayout({
                 <span className="text-red-500">e</span>
                 <span className="text-yellow-500">s</span>
               </h1>
-              <p className="text-center mt-2">
+              <p className="text-center my-2">
                 A multiplayer math puzzle game to play and outsmart your
                 friends.
               </p>
