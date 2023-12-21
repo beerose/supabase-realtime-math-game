@@ -3,6 +3,13 @@
 import { supabaseClient } from '@/supabase/client'
 import { useRouter } from 'next/navigation'
 import { FormEvent, useState } from 'react'
+import {
+  uniqueNamesGenerator,
+  Config,
+  adjectives,
+  colors,
+  animals,
+} from 'unique-names-generator'
 
 export default function NewGamePage() {
   const router = useRouter()
@@ -11,9 +18,17 @@ export default function NewGamePage() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     sessionStorage.setItem('name', name)
+
+    const randomName: string = uniqueNamesGenerator({
+      dictionaries: [adjectives, colors, animals],
+      separator: '-',
+      length: 3,
+    })
     const newGame = await supabaseClient
       .from('rooms')
-      .insert({})
+      .insert({
+        name: randomName,
+      })
       .select()
       .single()
 
@@ -22,7 +37,7 @@ export default function NewGamePage() {
       return
     }
 
-    router.push(`/${newGame.data.id}`)
+    router.push(`/${newGame.data.name}`)
   }
 
   return (
