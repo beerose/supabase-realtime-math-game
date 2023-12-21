@@ -1,8 +1,11 @@
 'use client'
 
+import { supabaseClient } from '@/supabase/client'
+import { useRouter } from 'next/navigation'
 import { FormEvent, useState } from 'react'
 
 export default function NewGamePage() {
+  const router = useRouter()
   const [name, setName] = useState('')
   const [roomCode, setRoomCode] = useState('')
 
@@ -10,7 +13,20 @@ export default function NewGamePage() {
     event.preventDefault()
     sessionStorage.setItem('name', name)
 
-    window.location.href = `/${roomCode}`
+    const insertResult = await supabaseClient.from('results').insert([
+      {
+        room_name: roomCode,
+        name: name,
+        result: 0,
+      },
+    ])
+
+    if (insertResult.error) {
+      console.error(insertResult.error)
+      return
+    }
+
+    router.push(`/${roomCode}`)
   }
 
   return (

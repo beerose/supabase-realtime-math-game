@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { FormEvent, useState } from 'react'
 import {
   uniqueNamesGenerator,
-  Config,
   adjectives,
   colors,
   animals,
@@ -27,7 +26,7 @@ export default function NewGamePage() {
     const newGame = await supabaseClient
       .from('rooms')
       .insert({
-        name: randomName,
+        room_name: randomName,
       })
       .select()
       .single()
@@ -37,7 +36,20 @@ export default function NewGamePage() {
       return
     }
 
-    router.push(`/${newGame.data.name}`)
+    const insertResult = await supabaseClient.from('results').insert([
+      {
+        room_name: newGame.data.room_name,
+        name: name,
+        result: 0,
+      },
+    ])
+
+    if (insertResult.error) {
+      console.error(insertResult.error)
+      return
+    }
+
+    router.push(`/${newGame.data.room_name}`)
   }
 
   return (
