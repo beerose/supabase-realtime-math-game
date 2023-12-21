@@ -1,17 +1,28 @@
 'use client'
 
+import { supabaseClient } from '@/supabase/client'
+import { useRouter } from 'next/navigation'
 import { FormEvent, useState } from 'react'
 
 export default function NewGamePage() {
+  const router = useRouter()
   const [name, setName] = useState('')
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     sessionStorage.setItem('name', name)
-    const gameId = Math.random().toString(36).substring(7)
-    // TODO: create room in supabase
+    const newGame = await supabaseClient
+      .from('rooms')
+      .insert({})
+      .select()
+      .single()
 
-    window.location.href = `/${gameId}`
+    if (newGame.error) {
+      console.error(newGame.error)
+      return
+    }
+
+    router.push(`/${newGame.data.id}`)
   }
 
   return (
@@ -21,7 +32,7 @@ export default function NewGamePage() {
     >
       <input
         className="px-8 py-4 bg-white text-black rounded-lg shadow-lg"
-        placeholder="Your Name"
+        placeholder="Your name"
         value={name}
         onChange={(e) => setName(e.target.value)}
       />
