@@ -37,7 +37,7 @@ export default function RootLayout({
                 A multiplayer math puzzle game to play and outsmart your
                 friends.
               </p>
-              {children}
+              <div className="sm:mt-4">{children}</div>
             </div>
           </div>
         </main>
