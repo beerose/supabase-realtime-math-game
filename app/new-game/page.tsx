@@ -38,7 +38,7 @@ export default function NewGamePage() {
 
     const insertResult = await supabaseClient.from('results').insert([
       {
-        room_name: newGame.data.room_name,
+        room_name: newGame.data.room_name || '',
         name: name,
         result: 0,
       },
