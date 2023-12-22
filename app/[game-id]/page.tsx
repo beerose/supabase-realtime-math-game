@@ -14,7 +14,7 @@ import { emojisplosion } from 'emojisplosion'
 type GameState = {
   cards: {
     id: number
-    value: number
+    value?: number
   }[]
   inputs: number
   selectedIds: number[]
@@ -33,7 +33,7 @@ const generateCards = (): {
       value: Math.floor(Math.random() * 100),
     })
   }
-  const numOfInputs = Math.floor(Math.random() * 2) + 3
+  const numOfInputs = 3 // Math.floor(Math.random() * 2) + 3, 4 seems to be too hard
   const possibleResults = []
 
   for (let i = 0; i < 5; i++) {
@@ -42,25 +42,27 @@ const generateCards = (): {
     for (let i = 0; i < numOfInputs; i++) {
       const card =
         resultCards[Math.floor(Math.random() * (resultCards.length - 1))]
-      console.log('card', card)
       result += card.value
       resultCards = resultCards.filter((c) => c.id !== card.id)
     }
-    console.log('rresult', result)
     possibleResults.push(result)
   }
 
   return {
     cards,
     inputs: numOfInputs,
-    result: possibleResults[Math.floor(Math.random() * 5)],
+    result: possibleResults.sort((a, b) => (a > b ? 1 : -1))[0],
   }
 }
 
-const defaultCards = Array.from({ length: 16 }, (_, i) => ({
-  id: i,
-  value: 9,
-}))
+const defaultGameState = {
+  cards: Array.from({ length: 16 }, (_, i) => ({
+    id: i,
+  })),
+  inputs: 3,
+  selectedIds: [],
+  result: 0,
+}
 
 const getGame = async (gameId: string) => {
   const gameResult = await supabaseClient
@@ -107,12 +109,7 @@ export default function Game() {
   const [counter, setCounter] = useState(5 * 60)
   const [isResetting, setIsResetting] = useState(false)
 
-  const [gameState, setGameState] = useState<GameState>({
-    cards: defaultCards,
-    inputs: 4,
-    selectedIds: [],
-    result: 0,
-  })
+  const [gameState, setGameState] = useState<GameState>(defaultGameState)
 
   useEffect(() => {
     const fetchGame = async () => {
@@ -246,7 +243,7 @@ export default function Game() {
     if (gameState.selectedIds.length !== gameState.inputs) return
 
     const result = gameState.selectedIds.reduce(
-      (acc, curr) => acc + gameState.cards[curr].value,
+      (acc, curr) => acc + (gameState.cards?.[curr].value || 0),
       0
     )
 
@@ -378,7 +375,7 @@ export default function Game() {
                   }))
                 }}
               >
-                {card.value}
+                {card.value ?? '?'}
               </div>
             ))}
           </div>
