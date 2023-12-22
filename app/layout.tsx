@@ -17,7 +17,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <main className="flex min-h-screen flex-col items-center justify-between p-8 md:p-24">
+        <main className="flex min-h-screen flex-col items-center justify-between p-12 pb-2 md:p-24 md:pb-4">
           <div className="z-10 md:max-w-5xl w-full items-center font-mono text-sm flex justify-center">
             <div className="flex flex-col items-center justify-center">
               <h1 className="text-4xl font-bold text-center">
@@ -40,6 +40,21 @@ export default function RootLayout({
               <div className="sm:mt-4">{children}</div>
             </div>
           </div>
+          <footer className="flex text-[8px] flex-col items-center justify-center w-full py-4">
+            <span>
+              built mostly in the middle of the night by{' '}
+              <a
+                className="text-blue-200"
+                href="https://twitter.com/aleksandrasays"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                aleksandra sikora
+              </a>
+              .
+            </span>
+            50/50 chance of working.
+          </footer>
         </main>
       </body>
     </html>
