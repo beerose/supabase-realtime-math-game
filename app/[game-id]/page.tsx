@@ -19,6 +19,7 @@ type GameState = {
   inputs: number
   selectedIds: number[]
   result: number
+  status: 'idle' | 'started' | 'finished'
 }
 
 const generateCards = (): {
@@ -55,13 +56,14 @@ const generateCards = (): {
   }
 }
 
-const defaultGameState = {
+const defaultGameState: GameState = {
   cards: Array.from({ length: 16 }, (_, i) => ({
     id: i,
   })),
   inputs: 3,
   selectedIds: [],
   result: 0,
+  status: 'idle',
 }
 
 const getGame = async (gameId: string) => {
@@ -106,8 +108,9 @@ export default function Game() {
   const [ready, setReady] = useState(false)
   const [gameStarted, setGameStarted] = useState(false)
   const [startGameCounter, setStartGameCounter] = useState<number | null>(null)
-  const [counter, setCounter] = useState(5 * 60)
+  const [counter, setCounter] = useState(10 * 60)
   const [isResetting, setIsResetting] = useState(false)
+  const [usersSynced, setUsersSynced] = useState(false)
 
   const [gameState, setGameState] = useState<GameState>(defaultGameState)
 
@@ -128,6 +131,7 @@ export default function Game() {
       setGameStarted(true)
       setStartGameCounter(null)
       setGameState({
+        status: 'started',
         ...generateCards(),
         selectedIds: [],
       })
@@ -143,8 +147,13 @@ export default function Game() {
   useEffect(() => {
     if (!gameStarted) return
     if (counter === 0) {
+      // TOOD: set game started in DB and sync if user refreshes the page
       setGameStarted(false)
-      setCounter(5 * 60)
+      setCounter(10 * 60)
+      setGameState({
+        ...defaultGameState,
+        status: 'finished',
+      })
       return
     }
     if (counter > 0) {
@@ -184,6 +193,26 @@ export default function Game() {
         }
       )
       .on(
+        REALTIME_LISTEN_TYPES.PRESENCE,
+        { event: REALTIME_PRESENCE_LISTEN_EVENTS.SYNC },
+        () => {
+          if (usersSynced) return
+          const state = room.presenceState<{
+            name: string
+            result: number
+            ready: boolean
+          }>()
+          setUsers(
+            Object.values(state).map((presence) => ({
+              name: presence?.[0]?.name,
+              score: 0,
+              ready: presence?.[0]?.ready,
+            }))
+          )
+          setUsersSynced(true)
+        }
+      )
+      .on(
         REALTIME_LISTEN_TYPES.POSTGRES_CHANGES,
         {
           event: REALTIME_POSTGRES_CHANGES_LISTEN_EVENT.UPDATE,
@@ -210,16 +239,20 @@ export default function Game() {
         { event: 'ready' },
         ({ payload }) => {
           setUsers((state) => {
-            const newState = state.map((user) => ({
-              ...user,
-              ready: payload.username === user.name,
-            }))
+            const newState = state.map((user) => {
+              if (user.name === payload.username) {
+                return {
+                  ...user,
+                  ready: true,
+                }
+              }
+              return user
+            })
+            if (newState.every((user) => user.ready)) {
+              setStartGameCounter(5)
+            }
             return newState
           })
-
-          if (users.every((user) => user.ready)) {
-            setStartGameCounter(5)
-          }
         }
       )
       .subscribe(async (status) => {
@@ -230,6 +263,7 @@ export default function Game() {
         await room.track({
           name: currentUser,
           result: 0,
+          ready,
         })
       })
 
@@ -249,10 +283,11 @@ export default function Game() {
 
     if (result === gameState.result) {
       emojisplosion()
-      setGameState({
+      setGameState((state) => ({
+        ...state,
         ...generateCards(),
         selectedIds: [],
-      })
+      }))
       upsertResult(
         roomName,
         currentUser,
@@ -299,7 +334,21 @@ export default function Game() {
         </div>
       </div>
 
-      <div className="flex flex-col items-center justify-center w-full mt-2 h-8">
+      <div className="sm:hidden flex justify-center">
+        <button
+          className="px-6 py-2 bg-blue-500 text-white rounded-lg shadow-lg my-2"
+          onClick={() => setShowResults((state) => !state)}
+        >
+          {showResults ? 'Hide Results' : 'Show Results'}
+        </button>
+      </div>
+
+      <div className="flex flex-col items-center justify-center w-full mt-2 h-8 text-center">
+        {gameState.status === 'finished' && (
+          <div className="text-xl font-bold text-white mt-4">
+            Game Over! 🎉🎉🎉
+          </div>
+        )}
         {!users.every((user) => user.ready) ? (
           ready ? (
             <div>Waiting for others to be ready...</div>
@@ -330,14 +379,6 @@ export default function Game() {
         )}
       </div>
 
-      <div className="sm:hidden flex justify-center">
-        <button
-          className="px-6 py-2 bg-blue-500 text-white rounded-lg shadow-lg my-2"
-          onClick={() => setShowResults((state) => !state)}
-        >
-          {showResults ? 'Hide Results' : 'Show Results'}
-        </button>
-      </div>
       {showResults && (
         <Results
           usersState={users}
