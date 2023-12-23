@@ -65,6 +65,10 @@ export default function Game() {
   const [gameState, setGameState] = useState<GameState>(defaultGameState)
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (currentUser === '') {
+      router.push(`/join-game?game-id=${roomName}`)
+    }
     const fetchGame = async () => {
       const game = await getGame(roomName)
       if (!game) {
@@ -73,7 +77,7 @@ export default function Game() {
       }
     }
     fetchGame()
-  }, [roomName, router])
+  }, [roomName, router, currentUser])
 
   useEffect(() => {
     if (startGameCounter === null) return

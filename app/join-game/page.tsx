@@ -1,13 +1,25 @@
 'use client'
 
 import { supabaseClient } from '@/supabase/client'
-import { useRouter } from 'next/navigation'
-import { FormEvent, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { FormEvent, useEffect, useState } from 'react'
 
 export default function NewGamePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [name, setName] = useState('')
   const [roomCode, setRoomCode] = useState('')
+
+  useEffect(() => {
+    const name = sessionStorage.getItem('name')
+    if (name) {
+      setName(name)
+    }
+
+    if (searchParams.has('game-id')) {
+      setRoomCode(searchParams.get('game-id') || '')
+    }
+  }, [searchParams])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
