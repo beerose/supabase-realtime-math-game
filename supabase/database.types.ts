@@ -9,48 +9,21 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
-      comments: {
-        Row: {
-          comment: string | null
-          created_at: string | null
-          name: string | null
-          path: unknown | null
-        }
-        Insert: {
-          comment?: string | null
-          created_at?: string | null
-          name?: string | null
-          path?: unknown | null
-        }
-        Update: {
-          comment?: string | null
-          created_at?: string | null
-          name?: string | null
-          path?: unknown | null
-        }
-        Relationships: []
-      }
       results: {
         Row: {
           created_at: string
-          id: number
-          is_admin: boolean | null
           name: string
           result: number
           room_name: string
         }
         Insert: {
           created_at?: string
-          id?: number
-          is_admin?: boolean | null
           name: string
           result?: number
           room_name: string
         }
         Update: {
           created_at?: string
-          id?: number
-          is_admin?: boolean | null
           name?: string
           result?: number
           room_name?: string
@@ -69,20 +42,17 @@ export interface Database {
         Row: {
           created_at: string
           id: number
-          room_name: string | null
-          time: number | null
+          room_name: string
         }
         Insert: {
           created_at?: string
           id?: number
-          room_name?: string | null
-          time?: number | null
+          room_name: string
         }
         Update: {
           created_at?: string
           id?: number
-          room_name?: string | null
-          time?: number | null
+          room_name?: string
         }
         Relationships: []
       }
