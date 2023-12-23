@@ -45,6 +45,12 @@ const generateCards = (): {
         resultCards[Math.floor(Math.random() * (resultCards.length - 1))]
       result += card.value
       resultCards = resultCards.filter((c) => c.id !== card.id)
+      if (process.env.NODE_ENV === 'development') {
+        console.log(card)
+      }
+    }
+    if (process.env.NODE_ENV === 'development') {
+      console.log(result)
     }
     possibleResults.push(result)
   }
@@ -221,7 +227,6 @@ export default function Game() {
           filter: `room_name=eq.${roomName}`,
         },
         (e) => {
-          console.log({ e })
           setUsers((state) =>
             state.map((user) =>
               user.name === e.new.name
