@@ -11,7 +11,7 @@ import { emojisplosion } from 'emojisplosion'
 import { supabaseClient } from '@/supabase/client'
 import { classNames } from '@/lib/classNames'
 import { generateCards } from '@/lib/generateCards'
-import { GameState } from '@/lib/types'
+import { GameState, Player } from '@/lib/types'
 
 const defaultGameState: GameState = {
   cards: Array.from({ length: 16 }, (_, i) => ({
@@ -46,20 +46,13 @@ const upsertResult = async (gameId: string, name: string, result: number) => {
   })
 }
 
-type Players = {
-  name: string
-  score: number
-  ready?: boolean
-  isAdmin?: boolean
-}
-
 export default function Game() {
   const routerParams = useParams()
   const router = useRouter()
   const roomName = routerParams['game-id'] as string
 
   const [showResults, setShowResults] = useState(false)
-  const [users, setUsers] = useState<Players[]>([])
+  const [users, setUsers] = useState<Player[]>([])
   const currentUser =
     (typeof window !== 'undefined' && sessionStorage.getItem('name')) || ''
   const [ready, setReady] = useState(false)
@@ -421,34 +414,38 @@ function Results({
   usersState,
   currentUser,
 }: {
-  usersState: Players[]
+  usersState: Player[]
   currentUser: string
 }) {
   return (
     <div className="flex flex-col">
       <h2 className="text-2xl font-bold">Results</h2>
       <div className="flex flex-col">
-        {usersState.map((user) => (
-          <div
-            key={user.name}
-            className={'py-2 flex items-center justify-between relative'}
-          >
-            {user.name === currentUser && (
-              <div className="text-sm absolute -left-6 font-medium text-gray-100">
-                👉
-              </div>
-            )}
-            <div className="flex items-center">
-              <div className="">
-                <div className="text-sm font-medium text-gray-100">
-                  {user.name}
-                  {user.ready && <span className="ml-2 text-green-500">●</span>}
+        {usersState
+          .sort((a, b) => b.score - a.score)
+          .map((user) => (
+            <div
+              key={user.name}
+              className={'py-2 flex items-center justify-between relative'}
+            >
+              {user.name === currentUser && (
+                <div className="text-sm absolute -left-6 font-medium text-gray-100">
+                  👉
                 </div>
-                <div className="text-sm text-gray-200">{user.score}</div>
+              )}
+              <div className="flex items-center">
+                <div className="">
+                  <div className="text-sm font-medium text-gray-100">
+                    {user.name}
+                    {user.ready && (
+                      <span className="ml-2 text-green-500">●</span>
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-200">{user.score}</div>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
       </div>
     </div>
   )
