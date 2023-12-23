@@ -1,7 +1,7 @@
-import { GameState } from './types'
+import { LocalGameBoardState } from './types'
 
 export const generateCards = (): Pick<
-  GameState,
+  LocalGameBoardState,
   'cards' | 'numOfInputs' | 'expectedResult'
 > => {
   const cards = []

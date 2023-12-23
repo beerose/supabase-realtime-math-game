@@ -1,4 +1,4 @@
-export type GameState = {
+export type LocalGameBoardState = {
   cards: {
     id: number
     value?: number
@@ -6,7 +6,12 @@ export type GameState = {
   numOfInputs: number
   selectedCardIds: number[]
   expectedResult: number
+}
+
+export type GameState = {
   status: 'idle' | 'started' | 'finished'
+  startTime?: number
+  endTime?: number
 }
 
 export type Player = {

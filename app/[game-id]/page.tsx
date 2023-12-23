@@ -11,15 +11,18 @@ import { emojisplosion } from 'emojisplosion'
 import { supabaseClient } from '@/supabase/client'
 import { classNames } from '@/lib/classNames'
 import { generateCards } from '@/lib/generateCards'
-import { GameState, Player } from '@/lib/types'
+import { GameState, LocalGameBoardState, Player } from '@/lib/types'
 
-const defaultGameState: GameState = {
+const defaultGameBoardState: LocalGameBoardState = {
   cards: Array.from({ length: 16 }, (_, i) => ({
     id: i,
   })),
   numOfInputs: 3,
   selectedCardIds: [],
   expectedResult: 0,
+}
+
+const defaultGameState: GameState = {
   status: 'idle',
 }
 
@@ -46,23 +49,35 @@ const upsertResult = async (gameId: string, name: string, result: number) => {
   })
 }
 
+const updateGameState = async (gameId: string, state: GameState) => {
+  await supabaseClient.from('rooms').upsert({
+    room_name: gameId,
+    state: JSON.stringify(state),
+  })
+}
+
 export default function Game() {
   const routerParams = useParams()
   const router = useRouter()
   const roomName = routerParams['game-id'] as string
 
   const [showResults, setShowResults] = useState(false)
+
   const [users, setUsers] = useState<Player[]>([])
   const currentUser =
     (typeof window !== 'undefined' && sessionStorage.getItem('name')) || ''
   const [ready, setReady] = useState(false)
-  const [gameStarted, setGameStarted] = useState(false)
-  const [startGameCounter, setStartGameCounter] = useState<number | null>(null)
-  const [counter, setCounter] = useState(10 * 60)
-  const [isResetting, setIsResetting] = useState(false)
-  const [usersSynced, setUsersSynced] = useState(false)
 
   const [gameState, setGameState] = useState<GameState>(defaultGameState)
+  const [gameBoardState, setGameBoardState] = useState<LocalGameBoardState>(
+    defaultGameBoardState
+  )
+
+  const [startGameCounter, setStartGameCounter] = useState<number | null>(null)
+  const [counter, setCounter] = useState(10 * 60)
+  const [usersSynced, setUsersSynced] = useState(false)
+
+  const [isResetting, setIsResetting] = useState(false)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -82,10 +97,12 @@ export default function Game() {
   useEffect(() => {
     if (startGameCounter === null) return
     if (startGameCounter === 0) {
-      setGameStarted(true)
       setStartGameCounter(null)
-      setGameState({
+      setGameState((state) => ({
+        ...state,
         status: 'started',
+      }))
+      setGameBoardState({
         ...generateCards(),
         selectedCardIds: [],
       })
@@ -99,15 +116,14 @@ export default function Game() {
   }, [startGameCounter])
 
   useEffect(() => {
-    if (!gameStarted) return
+    if (gameState.status !== 'started') return
     if (counter === 0) {
       // TOOD: set game started in DB and sync if user refreshes the page
-      setGameStarted(false)
       setCounter(10 * 60)
       setGameState({
-        ...defaultGameState,
         status: 'finished',
       })
+      setGameBoardState(defaultGameBoardState)
       return
     }
     if (counter > 0) {
@@ -115,7 +131,7 @@ export default function Game() {
         setCounter((state) => (state || 0) - 1)
       }, 1000)
     }
-  }, [gameStarted, counter])
+  }, [gameState.status, counter])
 
   useEffect(() => {
     const room = supabaseClient.channel(roomName)
@@ -226,21 +242,21 @@ export default function Game() {
   }, [roomName, currentUser])
 
   useEffect(() => {
-    if (!gameStarted) return
-    if (gameState.selectedCardIds.length !== gameState.numOfInputs) return
+    if (gameState.status !== 'started') return
+    if (gameBoardState.selectedCardIds.length !== gameBoardState.numOfInputs)
+      return
 
-    const result = gameState.selectedCardIds.reduce(
-      (acc, curr) => acc + (gameState.cards?.[curr].value || 0),
+    const result = gameBoardState.selectedCardIds.reduce(
+      (acc, curr) => acc + (gameBoardState.cards?.[curr].value || 0),
       0
     )
 
-    if (result === gameState.expectedResult) {
+    if (result === gameBoardState.expectedResult) {
       emojisplosion()
-      setGameState((state) => ({
-        ...state,
+      setGameBoardState({
         ...generateCards(),
         selectedCardIds: [],
-      }))
+      })
       upsertResult(
         roomName,
         currentUser,
@@ -256,7 +272,7 @@ export default function Game() {
         setIsResetting(false)
       }, 500)
     }
-  }, [gameState, gameStarted])
+  }, [gameState.status, gameBoardState.selectedCardIds])
 
   return (
     <>
@@ -325,7 +341,7 @@ export default function Game() {
         {startGameCounter && startGameCounter > 0 ? (
           <span>Game starting in {startGameCounter}...</span>
         ) : null}
-        {gameStarted && (
+        {gameState.status === 'started' && (
           <span>
             Time remaining: {Math.floor(counter / 60)}:{counter % 60}
           </span>
@@ -347,27 +363,33 @@ export default function Game() {
         </div>
         <div className="col-span-3 py-2 flex flex-col items-center px-4">
           <div className="grid grid-cols-4 gap-4 w-full">
-            {gameState.cards.map((card, i) => (
+            {gameBoardState.cards.map((card, i) => (
               <div
                 key={i}
                 className={classNames(
                   'bg-gray-200 h-12 w-12 sm:h-16 sm:w-20 rounded-lg shadow-lg shadow-slate-600 flex items-center justify-center text-black ',
-                  gameState.selectedCardIds.find((id) => id === card.id)
+                  gameBoardState.selectedCardIds.find((id) => id === card.id)
                     ? 'bg-gray-600 shadow-slate-700 scale-105 cursor-not-allowed hover:none'
                     : 'hover:bg-gray-300 hover:shadow-slate-700 transition duration-200 hover:scale-105 transform cursor-pointer',
-                  gameState.selectedCardIds.length === gameState.numOfInputs &&
-                    !gameState.selectedCardIds.find((id) => id === card.id) &&
+                  gameBoardState.selectedCardIds.length ===
+                    gameBoardState.numOfInputs &&
+                    !gameBoardState.selectedCardIds.find(
+                      (id) => id === card.id
+                    ) &&
                     'opacity-50 cursor-not-allowed'
                 )}
                 onClick={() => {
-                  if (!gameStarted) return
+                  if (gameState.status !== 'started') return
                   if (
-                    gameState.selectedCardIds.length === gameState.numOfInputs
+                    gameBoardState.selectedCardIds.length ===
+                    gameBoardState.numOfInputs
                   )
                     return
-                  if (gameState.selectedCardIds.find((id) => id === card.id))
+                  if (
+                    gameBoardState.selectedCardIds.find((id) => id === card.id)
+                  )
                     return
-                  setGameState((state) => ({
+                  setGameBoardState((state) => ({
                     ...state,
                     selectedCardIds: [...state.selectedCardIds, card.id],
                   }))
@@ -378,35 +400,42 @@ export default function Game() {
             ))}
           </div>
           <div className="flex flex-row justify-center items-center mt-10 flex-wrap gap-y-2">
-            {Array.from({ length: gameState.numOfInputs }).map((_, index) => (
-              <div
-                key={index}
-                className="flex items-center"
-              >
-                {index > 0 && <span className="mx-2">+</span>}
+            {Array.from({ length: gameBoardState.numOfInputs }).map(
+              (_, index) => (
                 <div
-                  className={classNames(
-                    'text-black bg-white rounded-lg h-12 w-12 sm:h-14 sm:w-16 flex items-center justify-center text-center',
-                    gameState.selectedCardIds[index]
-                      ? 'bg-gray-200 shadow-slate-600 cursor-pointer hover:bg-gray-300'
-                      : 'bg-gray-600 shadow-slate-700',
-                    isResetting && 'animate-wiggle'
-                  )}
-                  onClick={() => {
-                    if (gameState.selectedCardIds[index] === undefined) return
-                    setGameState((state) => ({
-                      ...state,
-                      selectedCardIds: state.selectedCardIds.filter(
-                        (_, i) => i !== index
-                      ),
-                    }))
-                  }}
+                  key={index}
+                  className="flex items-center"
                 >
-                  {gameState.cards[gameState.selectedCardIds[index]]?.value}
+                  {index > 0 && <span className="mx-2">+</span>}
+                  <div
+                    className={classNames(
+                      'text-black bg-white rounded-lg h-12 w-12 sm:h-14 sm:w-16 flex items-center justify-center text-center',
+                      gameBoardState.selectedCardIds[index]
+                        ? 'bg-gray-200 shadow-slate-600 cursor-pointer hover:bg-gray-300'
+                        : 'bg-gray-600 shadow-slate-700',
+                      isResetting && 'animate-wiggle'
+                    )}
+                    onClick={() => {
+                      if (gameBoardState.selectedCardIds[index] === undefined)
+                        return
+                      setGameBoardState((state) => ({
+                        ...state,
+                        selectedCardIds: state.selectedCardIds.filter(
+                          (_, i) => i !== index
+                        ),
+                      }))
+                    }}
+                  >
+                    {
+                      gameBoardState.cards[
+                        gameBoardState.selectedCardIds[index]
+                      ]?.value
+                    }
+                  </div>
                 </div>
-              </div>
-            ))}
-            <div className="ml-2">= {gameState.expectedResult || '?'}</div>
+              )
+            )}
+            <div className="ml-2">= {gameBoardState.expectedResult || '?'}</div>
           </div>
         </div>
       </div>
