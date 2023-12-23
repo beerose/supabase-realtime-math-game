@@ -1,7 +1,5 @@
 'use client'
 
-import { classNames } from '@/lib/classNames'
-import { supabaseClient } from '@/supabase/client'
 import {
   REALTIME_LISTEN_TYPES,
   REALTIME_POSTGRES_CHANGES_LISTEN_EVENT,
@@ -10,65 +8,18 @@ import {
 import { useParams, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { emojisplosion } from 'emojisplosion'
-
-type GameState = {
-  cards: {
-    id: number
-    value?: number
-  }[]
-  inputs: number
-  selectedIds: number[]
-  result: number
-  status: 'idle' | 'started' | 'finished'
-}
-
-const generateCards = (): {
-  cards: { id: number; value: number }[]
-  inputs: number
-  result: number
-} => {
-  const cards = []
-  for (let i = 0; i < 16; i++) {
-    cards.push({
-      id: i,
-      value: Math.floor(Math.random() * 100),
-    })
-  }
-  const numOfInputs = 3 // Math.floor(Math.random() * 2) + 3, 4 seems to be too hard
-  const possibleResults = []
-
-  for (let i = 0; i < 5; i++) {
-    let resultCards = [...cards]
-    let result = 0
-    for (let i = 0; i < numOfInputs; i++) {
-      const card =
-        resultCards[Math.floor(Math.random() * (resultCards.length - 1))]
-      result += card.value
-      resultCards = resultCards.filter((c) => c.id !== card.id)
-      if (process.env.NODE_ENV === 'development') {
-        console.log(card)
-      }
-    }
-    if (process.env.NODE_ENV === 'development') {
-      console.log(result)
-    }
-    possibleResults.push(result)
-  }
-
-  return {
-    cards,
-    inputs: numOfInputs,
-    result: possibleResults.sort((a, b) => (a > b ? 1 : -1))[0],
-  }
-}
+import { supabaseClient } from '@/supabase/client'
+import { classNames } from '@/lib/classNames'
+import { generateCards } from '@/lib/generateCards'
+import { GameState } from '@/lib/types'
 
 const defaultGameState: GameState = {
   cards: Array.from({ length: 16 }, (_, i) => ({
     id: i,
   })),
-  inputs: 3,
-  selectedIds: [],
-  result: 0,
+  numOfInputs: 3,
+  selectedCardIds: [],
+  expectedResult: 0,
   status: 'idle',
 }
 
@@ -139,7 +90,7 @@ export default function Game() {
       setGameState({
         status: 'started',
         ...generateCards(),
-        selectedIds: [],
+        selectedCardIds: [],
       })
       return
     }
@@ -279,19 +230,19 @@ export default function Game() {
 
   useEffect(() => {
     if (!gameStarted) return
-    if (gameState.selectedIds.length !== gameState.inputs) return
+    if (gameState.selectedCardIds.length !== gameState.numOfInputs) return
 
-    const result = gameState.selectedIds.reduce(
+    const result = gameState.selectedCardIds.reduce(
       (acc, curr) => acc + (gameState.cards?.[curr].value || 0),
       0
     )
 
-    if (result === gameState.result) {
+    if (result === gameState.expectedResult) {
       emojisplosion()
       setGameState((state) => ({
         ...state,
         ...generateCards(),
-        selectedIds: [],
+        selectedCardIds: [],
       }))
       upsertResult(
         roomName,
@@ -303,7 +254,7 @@ export default function Game() {
       setTimeout(() => {
         setGameState((state) => ({
           ...state,
-          selectedIds: [],
+          selectedCardIds: [],
         }))
         setIsResetting(false)
       }, 500)
@@ -404,20 +355,24 @@ export default function Game() {
                 key={i}
                 className={classNames(
                   'bg-gray-200 h-12 w-12 sm:h-16 sm:w-20 rounded-lg shadow-lg shadow-slate-600 flex items-center justify-center text-black ',
-                  gameState.selectedIds.find((id) => id === card.id)
+                  gameState.selectedCardIds.find((id) => id === card.id)
                     ? 'bg-gray-600 shadow-slate-700 scale-105 cursor-not-allowed hover:none'
                     : 'hover:bg-gray-300 hover:shadow-slate-700 transition duration-200 hover:scale-105 transform cursor-pointer',
-                  gameState.selectedIds.length === gameState.inputs &&
-                    !gameState.selectedIds.find((id) => id === card.id) &&
+                  gameState.selectedCardIds.length === gameState.numOfInputs &&
+                    !gameState.selectedCardIds.find((id) => id === card.id) &&
                     'opacity-50 cursor-not-allowed'
                 )}
                 onClick={() => {
                   if (!gameStarted) return
-                  if (gameState.selectedIds.length === gameState.inputs) return
-                  if (gameState.selectedIds.find((id) => id === card.id)) return
+                  if (
+                    gameState.selectedCardIds.length === gameState.numOfInputs
+                  )
+                    return
+                  if (gameState.selectedCardIds.find((id) => id === card.id))
+                    return
                   setGameState((state) => ({
                     ...state,
-                    selectedIds: [...state.selectedIds, card.id],
+                    selectedCardIds: [...state.selectedCardIds, card.id],
                   }))
                 }}
               >
@@ -426,7 +381,7 @@ export default function Game() {
             ))}
           </div>
           <div className="flex flex-row justify-center items-center mt-10 flex-wrap gap-y-2">
-            {Array.from({ length: gameState.inputs }).map((input, index) => (
+            {Array.from({ length: gameState.numOfInputs }).map((_, index) => (
               <div
                 key={index}
                 className="flex items-center"
@@ -435,26 +390,26 @@ export default function Game() {
                 <div
                   className={classNames(
                     'text-black bg-white rounded-lg h-12 w-12 sm:h-14 sm:w-16 flex items-center justify-center text-center',
-                    gameState.selectedIds[index]
+                    gameState.selectedCardIds[index]
                       ? 'bg-gray-200 shadow-slate-600 cursor-pointer hover:bg-gray-300'
                       : 'bg-gray-600 shadow-slate-700',
                     isResetting && 'animate-wiggle'
                   )}
                   onClick={() => {
-                    if (gameState.selectedIds[index] === undefined) return
+                    if (gameState.selectedCardIds[index] === undefined) return
                     setGameState((state) => ({
                       ...state,
-                      selectedIds: state.selectedIds.filter(
+                      selectedCardIds: state.selectedCardIds.filter(
                         (_, i) => i !== index
                       ),
                     }))
                   }}
                 >
-                  {gameState.cards[gameState.selectedIds[index]]?.value}
+                  {gameState.cards[gameState.selectedCardIds[index]]?.value}
                 </div>
               </div>
             ))}
-            <div className="ml-2">= {gameState.result || 100}</div>
+            <div className="ml-2">= {gameState.expectedResult || '?'}</div>
           </div>
         </div>
       </div>
