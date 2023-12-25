@@ -9,7 +9,7 @@ export type LocalGameBoardState = {
 }
 
 export type GameState = {
-  status: 'idle' | 'started' | 'finished'
+  status: 'idle' | 'starting' | 'started' | 'finished'
   startTime?: Date
   endTime?: Date
 }
