@@ -13,24 +13,27 @@ export interface Database {
         Row: {
           created_at: string
           name: string
+          ready: boolean | null
           result: number
           room_name: string
         }
         Insert: {
           created_at?: string
           name: string
+          ready?: boolean | null
           result?: number
           room_name: string
         }
         Update: {
           created_at?: string
           name?: string
+          ready?: boolean | null
           result?: number
           room_name?: string
         }
         Relationships: [
           {
-            foreignKeyName: "fk_room_name"
+            foreignKeyName: "results_room_name_fkey"
             columns: ["room_name"]
             isOneToOne: false
             referencedRelation: "rooms"
@@ -41,18 +44,27 @@ export interface Database {
       rooms: {
         Row: {
           created_at: string
+          end_time: string | null
           id: number
           room_name: string
+          start_time: string | null
+          status: string | null
         }
         Insert: {
           created_at?: string
+          end_time?: string | null
           id?: number
           room_name: string
+          start_time?: string | null
+          status?: string | null
         }
         Update: {
           created_at?: string
+          end_time?: string | null
           id?: number
           room_name?: string
+          start_time?: string | null
+          status?: string | null
         }
         Relationships: []
       }

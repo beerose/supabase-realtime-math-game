@@ -10,8 +10,8 @@ export type LocalGameBoardState = {
 
 export type GameState = {
   status: 'idle' | 'started' | 'finished'
-  startTime?: number
-  endTime?: number
+  startTime?: Date
+  endTime?: Date
 }
 
 export type Player = {
