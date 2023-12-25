@@ -42,11 +42,19 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/deploym
 Postgres trigger:
 
 ```sql
+CREATE OR REPLACE FUNCTION end_game(room_name text) RETURNS void AS $$
+BEGIN
+    PERFORM pg_sleep(600); -- 600 seconds = 10 minutes
+    UPDATE rooms SET status='finished' WHERE room_name = room_name;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION check_all_players_ready()
 RETURNS TRIGGER AS $$
 BEGIN
     IF (SELECT COUNT(*) FROM results WHERE room_name = NEW.room_name AND ready = false) = 0 THEN
         UPDATE rooms SET status='starting' WHERE room_name = NEW.room_name;
+        SELECT end_game(NEW.room_name);
     END IF;
     RETURN NEW;
 END;
