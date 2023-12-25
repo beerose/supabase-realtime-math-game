@@ -46,13 +46,13 @@ CREATE OR REPLACE FUNCTION check_all_players_ready()
 RETURNS TRIGGER AS $$
 BEGIN
     IF (SELECT COUNT(*) FROM results WHERE room_name = NEW.room_name AND ready = false) = 0 THEN
-        UPDATE rooms SET start_time = NOW() WHERE room_name = NEW.room_name;
+        UPDATE rooms SET status='starting' WHERE room_name = NEW.room_name;
     END IF;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trigger_all_players_ready
+CREATE OR REPLACE TRIGGER trigger_all_players_ready
 AFTER UPDATE ON results
 FOR EACH ROW
 EXECUTE FUNCTION check_all_players_ready();
