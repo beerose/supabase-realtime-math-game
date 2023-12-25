@@ -36,3 +36,24 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+
+## Notes
+
+Postgres trigger:
+
+```sql
+CREATE OR REPLACE FUNCTION check_all_players_ready()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (SELECT COUNT(*) FROM results WHERE room_name = NEW.room_name AND ready = false) = 0 THEN
+        UPDATE rooms SET start_time = NOW() WHERE room_name = NEW.room_name;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_all_players_ready
+AFTER UPDATE ON results
+FOR EACH ROW
+EXECUTE FUNCTION check_all_players_ready();
+```
